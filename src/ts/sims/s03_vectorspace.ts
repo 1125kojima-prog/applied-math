@@ -77,7 +77,7 @@ function rand(): number {
 
 export function mountS03(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S03 ベクトル空間の8条件チェッカー",
+    title: "ベクトル空間の8条件チェッカー",
     page: "p.21-22",
     lecture: "第1回",
     purpose: "集合とその和・スカラー倍が、ベクトル空間の8条件を満たすかを確認する。",

@@ -8,6 +8,9 @@ import { createSimLayout, renderGlossary, renderQuiz } from "../ui/sim-layout.js
 import { renderBadge } from "../ui/badge.js";
 import { renderMatrix } from "../ui/matrix-view.js";
 import { Stepper } from "../ui/stepper.js";
+import { VectorCanvas, PALETTE, DraggablePoint, DrawVector, observeCanvasResize } from "../ui/vector-canvas.js";
+
+const CANVAS_COLORS = [PALETTE.blue, PALETTE.orange, PALETTE.green, PALETTE.vermillion];
 
 interface Preset {
   label: string;
@@ -28,7 +31,7 @@ const PRESETS: Preset[] = [
 
 export function mountS04(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S04 1次独立・1次従属の判定",
+    title: "1次独立・1次従属の判定",
     page: "p.31-33, p.34-36",
     lecture: "第3回・第4回",
     purpose: "ベクトルの組が1次独立か1次従属かを、Ac=0の非自明解の有無で判定する。",
@@ -48,7 +51,7 @@ export function mountS04(container: HTMLElement): void {
       <select id="s04-preset">${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">カスタム入力</option></select>
     </div>
     <div class="field-row">
-      <label for="s04-m">次元 m</label><select id="s04-m">${[2, 3].map((v) => `<option value="${v}">${v}</option>`).join("")}</select>
+      <label for="s04-m">次元</label><select id="s04-m"><option value="2">2次元（R²）</option><option value="3">3次元（R³）</option></select>
       <label for="s04-n">本数 n</label><select id="s04-n">${[1, 2, 3, 4].map((v) => `<option value="${v}">${v}</option>`).join("")}</select>
     </div>
     <div id="s04-grid"></div>
@@ -66,13 +69,196 @@ export function mountS04(container: HTMLElement): void {
   refs.display.innerHTML = `
     <div id="s04-step-desc" class="step-description" aria-live="polite"></div>
     <div id="s04-matrix"></div>
+    <h4>図で見る</h4>
+    <div id="s04-canvas-hint" class="condition-detail"></div>
+    <div id="s04-canvas-wrap"></div>
     <div id="s04-badge"></div>
     <div id="s04-note"></div>
   `;
   const stepDescEl = refs.display.querySelector<HTMLElement>("#s04-step-desc")!;
   const matrixEl = refs.display.querySelector<HTMLElement>("#s04-matrix")!;
+  const canvasHintEl = refs.display.querySelector<HTMLElement>("#s04-canvas-hint")!;
+  const canvasWrapEl = refs.display.querySelector<HTMLElement>("#s04-canvas-wrap")!;
   const badgeEl = refs.display.querySelector<HTMLElement>("#s04-badge")!;
   const noteEl = refs.display.querySelector<HTMLElement>("#s04-note")!;
+
+  // --- 図（R²はドラッグ、R³は既存の投影図と同様にドラッグで視点を回転） ---
+  let canvas2D: VectorCanvas | null = null;
+  let canvas3DEl: HTMLCanvasElement | null = null;
+  let ctx3: CanvasRenderingContext2D | null = null;
+  let cssW3 = 360;
+  let cssH3 = 360;
+  let az = 35; // 方位角（度）
+  let elev = 20; // 仰角（度）
+
+  function vecComponent(j: number, k: number): number {
+    return vectors[j]?.[k]?.toNumber() ?? 0;
+  }
+
+  function project3(v: [number, number, number]): { x: number; y: number } {
+    const radAz = (az * Math.PI) / 180;
+    const radEl = (elev * Math.PI) / 180;
+    const x1 = v[0] * Math.cos(radAz) - v[2] * Math.sin(radAz);
+    const z1 = v[0] * Math.sin(radAz) + v[2] * Math.cos(radAz);
+    const y1 = v[1];
+    const y2 = y1 * Math.cos(radEl) - z1 * Math.sin(radEl);
+    return { x: x1, y: y2 };
+  }
+
+  function worldToScreen3(p: { x: number; y: number }): { x: number; y: number } {
+    const scale = Math.min(cssW3, cssH3) / 9;
+    return { x: cssW3 / 2 + p.x * scale, y: cssH3 / 2 - p.y * scale };
+  }
+
+  function draw3D(): void {
+    if (!canvas3DEl || !ctx3) return;
+    const style = getComputedStyle(canvas3DEl);
+    ctx3.fillStyle = style.getPropertyValue("--canvas-bg") || "#fff";
+    ctx3.fillRect(0, 0, cssW3, cssH3);
+
+    const axisColor = style.getPropertyValue("--canvas-grid") || "#ddd";
+    const axes: Array<{ v: [number, number, number]; label: string }> = [
+      { v: [3.5, 0, 0], label: "x" },
+      { v: [0, 3.5, 0], label: "y" },
+      { v: [0, 0, 3.5], label: "z" },
+    ];
+    ctx3.strokeStyle = axisColor;
+    ctx3.lineWidth = 1;
+    ctx3.font = "14px sans-serif";
+    ctx3.fillStyle = style.getPropertyValue("--canvas-text") || "#333";
+    for (const ax of axes) {
+      const from = worldToScreen3(project3([0, 0, 0]));
+      const to = worldToScreen3(project3(ax.v));
+      ctx3.beginPath();
+      ctx3.moveTo(from.x, from.y);
+      ctx3.lineTo(to.x, to.y);
+      ctx3.stroke();
+      ctx3.fillText(ax.label, to.x + 4, to.y + 4);
+    }
+
+    if (m === 3) {
+      for (let j = 0; j < n; j++) {
+        const color = CANVAS_COLORS[j % CANVAS_COLORS.length];
+        const from = worldToScreen3(project3([0, 0, 0]));
+        const to = worldToScreen3(project3([vecComponent(j, 0), vecComponent(j, 1), vecComponent(j, 2)]));
+        ctx3.strokeStyle = color;
+        ctx3.fillStyle = color;
+        ctx3.lineWidth = 3;
+        ctx3.beginPath();
+        ctx3.moveTo(from.x, from.y);
+        ctx3.lineTo(to.x, to.y);
+        ctx3.stroke();
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        ctx3.beginPath();
+        ctx3.moveTo(to.x, to.y);
+        ctx3.lineTo(to.x - 10 * Math.cos(angle - Math.PI / 7), to.y - 10 * Math.sin(angle - Math.PI / 7));
+        ctx3.lineTo(to.x - 10 * Math.cos(angle + Math.PI / 7), to.y - 10 * Math.sin(angle + Math.PI / 7));
+        ctx3.closePath();
+        ctx3.fill();
+        ctx3.font = "bold 15px sans-serif";
+        ctx3.strokeStyle = style.getPropertyValue("--canvas-label-bg") || "#fff";
+        ctx3.lineWidth = 3;
+        ctx3.strokeText(`v${j + 1}`, to.x + 6, to.y - 6);
+        ctx3.fillStyle = color;
+        ctx3.fillText(`v${j + 1}`, to.x + 6, to.y - 6);
+      }
+    }
+  }
+
+  function refresh2D(): void {
+    if (!canvas2D) return;
+    const vecs: DrawVector[] = [];
+    const drags: DraggablePoint[] = [];
+    for (let j = 0; j < n; j++) {
+      const color = CANVAS_COLORS[j % CANVAS_COLORS.length];
+      const pos = { x: vecComponent(j, 0), y: vecComponent(j, 1) };
+      vecs.push({ from: { x: 0, y: 0 }, to: pos, color, label: `v${j + 1}` });
+      drags.push({ id: `v${j}`, pos, color, label: `v${j + 1}` });
+    }
+    canvas2D.setVectors(vecs);
+    canvas2D.setDraggables(drags);
+    canvas2D.render();
+  }
+
+  function refreshCanvas(): void {
+    if (m === 2) refresh2D();
+    else draw3D();
+  }
+
+  function syncGridInputs(): void {
+    gridEl.querySelectorAll<HTMLInputElement>(".s04-cell").forEach((el2) => {
+      if (document.activeElement === el2) return;
+      const col = Number(el2.dataset.col);
+      const row = Number(el2.dataset.row);
+      el2.value = String(vecComponent(col, row));
+    });
+  }
+
+  function setupCanvasForDimension(): void {
+    canvasWrapEl.innerHTML = "";
+    canvas2D = null;
+    canvas3DEl = null;
+    ctx3 = null;
+    if (m === 2) {
+      canvasHintEl.textContent = "v1〜v4 を点としてドラッグして動かせます。";
+      const c = document.createElement("canvas");
+      c.className = "vector-canvas";
+      c.width = 360;
+      c.height = 360;
+      canvasWrapEl.appendChild(c);
+      canvas2D = new VectorCanvas(c, {
+        range: 4,
+        snapGrid: 0.5,
+        onDrag: (id, pos) => {
+          const idx = Number(id.slice(1));
+          vectors[idx] = [frac(Math.round(pos.x * 2), 2), frac(Math.round(pos.y * 2), 2)];
+          syncGridInputs();
+          refresh2D();
+          renderFinal();
+        },
+      });
+    } else {
+      canvasHintEl.textContent = "ドラッグして視点を回転できます（既存の投影図と同様の操作）。";
+      const c3 = document.createElement("canvas");
+      c3.className = "vector-canvas";
+      c3.width = 360;
+      c3.height = 360;
+      c3.style.touchAction = "none";
+      canvasWrapEl.appendChild(c3);
+      canvas3DEl = c3;
+      ctx3 = c3.getContext("2d")!;
+      observeCanvasResize(c3, (w, h) => {
+        cssW3 = w;
+        cssH3 = h;
+        draw3D();
+      });
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+      c3.addEventListener("pointerdown", (ev) => {
+        dragging = true;
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        c3.setPointerCapture(ev.pointerId);
+      });
+      c3.addEventListener("pointermove", (ev) => {
+        if (!dragging) return;
+        const dx = ev.clientX - lastX;
+        const dy = ev.clientY - lastY;
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        az = (az + dx * 0.5 + 360) % 360;
+        elev = Math.max(-85, Math.min(85, elev - dy * 0.5));
+        draw3D();
+      });
+      const stopDrag = (): void => {
+        dragging = false;
+      };
+      c3.addEventListener("pointerup", stopDrag);
+      c3.addEventListener("pointercancel", stopDrag);
+    }
+    refreshCanvas();
+  }
 
   function buildGrid(): void {
     let html = "";
@@ -91,6 +277,7 @@ export function mountS04(container: HTMLElement): void {
         const row = Number(el.dataset.row);
         if (!vectors[col]) vectors[col] = new Array(m).fill(Fraction.zero());
         vectors[col][row] = frac(Number(el.value) || 0);
+        refreshCanvas();
       });
     });
   }
@@ -159,20 +346,24 @@ export function mountS04(container: HTMLElement): void {
     nSel.value = String(n);
     vectors = preset.vectors.map((v) => v.map((x) => frac(x)));
     buildGrid();
+    setupCanvasForDimension();
   });
   mSel.addEventListener("change", () => {
     m = Number(mSel.value);
     resetVectorsForDims();
     buildGrid();
+    setupCanvasForDimension();
   });
   nSel.addEventListener("change", () => {
     n = Number(nSel.value);
     resetVectorsForDims();
     buildGrid();
+    refreshCanvas();
   });
   refs.operation.querySelector<HTMLButtonElement>("#s04-run")!.addEventListener("click", run);
 
   buildGrid();
+  setupCanvasForDimension();
   run();
 
   renderQuiz(refs.quiz, [

@@ -1,9 +1,11 @@
 /**
  * アプリのエントリーポイント。
- * テーマの初期化、目次（Nav）の構築、各シミュレーションの登録を行う。
+ * テーマの初期化、目次（第1回〜第7回のページ）の構築、各シミュレーションの
+ * 講義回への割り当てを行う。1つのシミュレーションが複数の講義回にまたがる
+ * 場合（例: 第3回と第4回の両方で使うもの）は、対応するすべてのページに表示する。
  */
 import { initTheme, setTheme, ThemeMode } from "./ui/theme.js";
-import { Nav, SimEntry } from "./ui/nav.js";
+import { Nav, PageEntry, SimEntry } from "./ui/nav.js";
 import { mountS01 } from "./sims/s01_subspace.js";
 import { mountS02 } from "./sims/s02_gauss.js";
 import { mountS03 } from "./sims/s03_vectorspace.js";
@@ -26,26 +28,52 @@ if (themeSelect) {
   });
 }
 
-const entries: SimEntry[] = [
-  { id: "s01", title: "S01 部分空間の判定器", lecture: "第2回", page: "p.24-29", mount: mountS01 },
-  { id: "s02", title: "S02 掃き出し法のステッパー", lecture: "事前学習2/第7回", page: "p.55", mount: mountS02 },
-  { id: "s03", title: "S03 ベクトル空間の8条件チェッカー", lecture: "第1回", page: "p.21-22", mount: mountS03 },
-  { id: "s04", title: "S04 1次独立・1次従属の判定", lecture: "第3・4回", page: "p.31-36", mount: mountS04 },
-  { id: "s05", title: "S05 図で見る1次独立・1次従属", lecture: "第3・4回", page: "p.33-34", mount: mountS05 },
-  { id: "s06", title: "S06 行列とベクトルの組の対応", lecture: "第4回", page: "p.33", mount: mountS06 },
-  { id: "s07", title: "S07 ランク・極大1次独立部分組", lecture: "第5回", page: "p.43-44", mount: mountS07 },
-  { id: "s08", title: "S08 行列のランク（列＝行）", lecture: "第5回", page: "p.44-46", mount: mountS08 },
-  { id: "s09", title: "S09 基底と座標", lecture: "第6回", page: "p.51-56", mount: mountS09 },
-  { id: "s10", title: "S10 次元の定義と基底の要素数", lecture: "第7回", page: "p.54,59-60", mount: mountS10 },
-  { id: "s11", title: "S11 生成される部分空間の次元", lecture: "第7回", page: "p.59-60", mount: mountS11 },
-  { id: "s12", title: "S12 多項式空間とグラフ", lecture: "第3・4・7回", page: "p.32,46", mount: mountS12 },
+const SIMS: Record<string, SimEntry> = {
+  s01: { id: "s01", mount: mountS01 },
+  s02: { id: "s02", mount: mountS02 },
+  s03: { id: "s03", mount: mountS03 },
+  s04: { id: "s04", mount: mountS04 },
+  s05: { id: "s05", mount: mountS05 },
+  s06: { id: "s06", mount: mountS06 },
+  s07: { id: "s07", mount: mountS07 },
+  s08: { id: "s08", mount: mountS08 },
+  s09: { id: "s09", mount: mountS09 },
+  s10: { id: "s10", mount: mountS10 },
+  s11: { id: "s11", mount: mountS11 },
+  s12: { id: "s12", mount: mountS12 },
+};
+
+interface RoundDef {
+  id: string;
+  title: string;
+  pdfFile: string;
+  pageRange: string;
+  simIds: string[];
+}
+
+const ROUND_DEFS: RoundDef[] = [
+  { id: "round1", title: "第1回", pdfFile: "01.pdf", pageRange: "p.21-23", simIds: ["s03"] },
+  { id: "round2", title: "第2回", pdfFile: "02.pdf", pageRange: "p.24-30", simIds: ["s01"] },
+  { id: "round3", title: "第3回", pdfFile: "03.pdf", pageRange: "p.31-33", simIds: ["s04", "s05", "s12"] },
+  { id: "round4", title: "第4回", pdfFile: "04.pdf", pageRange: "p.34-40", simIds: ["s04", "s05", "s06", "s12"] },
+  { id: "round5", title: "第5回", pdfFile: "05.pdf", pageRange: "p.41-50", simIds: ["s07", "s08"] },
+  { id: "round6", title: "第6回", pdfFile: "06.pdf", pageRange: "p.51-58", simIds: ["s09"] },
+  { id: "round7", title: "第7回", pdfFile: "07.pdf", pageRange: "p.59-63", simIds: ["s02", "s10", "s11", "s12"] },
 ];
+
+const pages: PageEntry[] = ROUND_DEFS.map((r) => ({
+  id: r.id,
+  title: r.title,
+  pdfFile: r.pdfFile,
+  pageRange: r.pageRange,
+  sims: r.simIds.map((simId) => SIMS[simId]),
+}));
 
 const navListEl = document.getElementById("nav-list");
 const mainContentEl = document.getElementById("sim-container");
 
 if (navListEl && mainContentEl) {
-  const nav = new Nav(navListEl, mainContentEl, entries);
+  const nav = new Nav(navListEl, mainContentEl, pages);
   nav.showFromHashOrFirst();
   window.addEventListener("hashchange", () => {
     const hash = location.hash.replace("#", "");

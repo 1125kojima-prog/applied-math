@@ -105,7 +105,7 @@ function toFracVec(nums) {
 }
 export function mountS01(container) {
     const refs = createSimLayout(container, {
-        title: "S01 部分空間の判定器",
+        title: "部分空間の判定器",
         page: "p.24–29",
         lecture: "第2回",
         purpose: "集合 W が部分空間かどうかを、定理4.1.1の3条件で判定する。",

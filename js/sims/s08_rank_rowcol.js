@@ -15,7 +15,7 @@ const DEFAULT_A = [
 ];
 export function mountS08(container) {
     const refs = createSimLayout(container, {
-        title: "S08 行列のランク（列のランク＝行のランク）",
+        title: "行列のランク（列のランク＝行のランク）",
         page: "p.44-46",
         lecture: "第5回",
         purpose: "rank(A) = 列の最大独立数 = 行の最大独立数 であることを確認する。",

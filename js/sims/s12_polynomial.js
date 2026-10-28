@@ -8,7 +8,7 @@ import { isIndependent, nontrivialDependency, polyEval, polyToLatex } from "../m
 import { createSimLayout, renderGlossary, renderQuiz } from "../ui/sim-layout.js";
 import { renderBadge } from "../ui/badge.js";
 import { renderAllMath } from "../ui/katex-loader.js";
-import { PALETTE } from "../ui/vector-canvas.js";
+import { PALETTE, observeCanvasResize } from "../ui/vector-canvas.js";
 const DEFAULT_F = [
     [1, 1, 3, 0],
     [1, 2, 0, -1],
@@ -20,7 +20,7 @@ const COLORS = [PALETTE.blue, PALETTE.orange, PALETTE.green, PALETTE.vermillion,
 const DASHES = [[], [8, 4], [2, 3], [10, 3, 2, 3], [1, 4]];
 export function mountS12(container) {
     const refs = createSimLayout(container, {
-        title: "S12 多項式空間とグラフ",
+        title: "多項式空間とグラフ",
         page: "p.32, p.46",
         lecture: "第3・4・7回",
         purpose: "多項式を係数ベクトルとして扱い、グラフと1次独立性判定を連動させて確認する。",
@@ -48,6 +48,13 @@ export function mountS12(container) {
     const vectorsEl = refs.display.querySelector("#s12-vectors");
     const badgeEl = refs.display.querySelector("#s12-badge");
     const ctx = canvasEl.getContext("2d");
+    let cssW = 380;
+    let cssH = 300;
+    observeCanvasResize(canvasEl, (w, h) => {
+        cssW = w;
+        cssH = h;
+        drawGraph();
+    });
     function buildGrid() {
         let html = "";
         for (let j = 0; j < n; j++) {
@@ -79,8 +86,8 @@ export function mountS12(container) {
         coeffs = newCoeffs;
     }
     function worldToScreen(x, y, yRange) {
-        const w = canvasEl.width;
-        const h = canvasEl.height;
+        const w = cssW;
+        const h = cssH;
         const sx = w / 6; // x: -3..3
         const sy = h / (2 * yRange);
         return { x: w / 2 + x * sx, y: h / 2 - y * sy };
@@ -88,7 +95,7 @@ export function mountS12(container) {
     function drawGraph() {
         const style = getComputedStyle(canvasEl);
         ctx.fillStyle = style.getPropertyValue("--canvas-bg") || "#fff";
-        ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+        ctx.fillRect(0, 0, cssW, cssH);
         let yMax = 1;
         const samples = coeffs.map((c) => {
             const ys = [];
@@ -107,9 +114,9 @@ export function mountS12(container) {
         ctx.beginPath();
         const axisX = worldToScreen(0, 0, yMax);
         ctx.moveTo(0, axisX.y);
-        ctx.lineTo(canvasEl.width, axisX.y);
+        ctx.lineTo(cssW, axisX.y);
         ctx.moveTo(axisX.x, 0);
-        ctx.lineTo(axisX.x, canvasEl.height);
+        ctx.lineTo(axisX.x, cssH);
         ctx.stroke();
         samples.forEach((ys, j) => {
             ctx.strokeStyle = COLORS[j % 5];

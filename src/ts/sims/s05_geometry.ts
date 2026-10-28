@@ -10,11 +10,11 @@ import { det2, det3 } from "../math/matrix.js";
 import { nontrivialDependency, coordinates } from "../math/linalg.js";
 import { createSimLayout, renderGlossary, renderQuiz } from "../ui/sim-layout.js";
 import { renderBadge } from "../ui/badge.js";
-import { VectorCanvas, PALETTE, DraggablePoint, DrawVector } from "../ui/vector-canvas.js";
+import { VectorCanvas, PALETTE, DraggablePoint, DrawVector, observeCanvasResize } from "../ui/vector-canvas.js";
 
 export function mountS05(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S05 図で見る1次独立・1次従属",
+    title: "図で見る1次独立・1次従属",
     page: "p.33-34",
     lecture: "第3回・第4回",
     purpose: "1次独立・従属を図で直感的に理解する（R²はドラッグ、R³は数値入力＋回転）。",
@@ -124,6 +124,13 @@ export function mountS05(container: HTMLElement): void {
     canvasEl.height = 360;
     canvasWrap.appendChild(canvasEl);
     const ctx = canvasEl.getContext("2d")!;
+    let cssW = 360;
+    let cssH = 360;
+    observeCanvasResize(canvasEl, (w, h) => {
+      cssW = w;
+      cssH = h;
+      renderR3();
+    });
 
     function project(v: Fraction[]): { x: number; y: number } {
       const rad = (angle * Math.PI) / 180;
@@ -136,8 +143,8 @@ export function mountS05(container: HTMLElement): void {
     }
 
     function worldToScreen(p: { x: number; y: number }): { x: number; y: number } {
-      const scale = 36;
-      return { x: 180 + p.x * scale, y: 180 - p.y * scale };
+      const scale = Math.min(cssW, cssH) / 10;
+      return { x: cssW / 2 + p.x * scale, y: cssH / 2 - p.y * scale };
     }
 
     function drawArrow3(v: Fraction[], color: string, label: string): void {
@@ -167,13 +174,13 @@ export function mountS05(container: HTMLElement): void {
     function renderR3(): void {
       const style = getComputedStyle(canvasEl);
       ctx.fillStyle = style.getPropertyValue("--canvas-bg") || "#fff";
-      ctx.fillRect(0, 0, 360, 360);
+      ctx.fillRect(0, 0, cssW, cssH);
       ctx.strokeStyle = style.getPropertyValue("--canvas-grid") || "#ddd";
       ctx.beginPath();
-      ctx.moveTo(0, 180);
-      ctx.lineTo(360, 180);
-      ctx.moveTo(180, 0);
-      ctx.lineTo(180, 360);
+      ctx.moveTo(0, cssH / 2);
+      ctx.lineTo(cssW, cssH / 2);
+      ctx.moveTo(cssW / 2, 0);
+      ctx.lineTo(cssW / 2, cssH);
       ctx.stroke();
 
       drawArrow3(a, PALETTE.blue, "a");

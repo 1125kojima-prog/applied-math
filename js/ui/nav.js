@@ -1,12 +1,15 @@
 /**
- * 目次（S01〜S12）の切り替えナビゲーション。
- * 1画面に1つのシミュレーションだけを表示し、キーボード（Tab/Enter）で選べるようにする。
+ * 目次（第1回〜第7回）の切り替えナビゲーション。
+ * 1画面に1つの講義回（ページ）だけを表示する。各ページの冒頭には対応する
+ * 講義資料のファイル名とノートのページ番号を示し、その回に対応するシミュレー
+ * ションだけを並べる。キーボード（Tab/Enter）でも選べるようにする。
  */
 import { renderAllMath } from "./katex-loader.js";
+import { createPageHeader } from "./sim-layout.js";
 export class Nav {
-    constructor(listEl, contentEl, entries) {
+    constructor(listEl, contentEl, pages) {
         this.currentId = null;
-        this.entries = entries;
+        this.pages = pages;
         this.listEl = listEl;
         this.contentEl = contentEl;
         this.buildList();
@@ -14,28 +17,34 @@ export class Nav {
     buildList() {
         this.listEl.innerHTML = "";
         this.listEl.setAttribute("role", "list");
-        for (const entry of this.entries) {
+        for (const page of this.pages) {
             const item = document.createElement("li");
             const button = document.createElement("button");
             button.type = "button";
             button.className = "nav-item";
-            button.id = `navbtn-${entry.id}`;
-            button.innerHTML = `<span class="nav-item-title">${entry.title}</span><span class="nav-item-page">${entry.lecture} ${entry.page}</span>`;
-            button.addEventListener("click", () => this.show(entry.id));
+            button.id = `navbtn-${page.id}`;
+            button.innerHTML = `<span class="nav-item-title">${page.title}</span><span class="nav-item-page">${page.pdfFile}　${page.pageRange}</span>`;
+            button.addEventListener("click", () => this.show(page.id));
             item.appendChild(button);
             this.listEl.appendChild(item);
         }
     }
     show(id) {
-        const entry = this.entries.find((e) => e.id === id);
-        if (!entry)
+        const page = this.pages.find((p) => p.id === id);
+        if (!page)
             return;
         this.currentId = id;
         this.listEl.querySelectorAll(".nav-item").forEach((el) => el.classList.remove("nav-item-active"));
         document.getElementById(`navbtn-${id}`)?.classList.add("nav-item-active");
         this.contentEl.innerHTML = "";
         this.contentEl.focus();
-        entry.mount(this.contentEl);
+        createPageHeader(this.contentEl, { title: page.title, pdfFile: page.pdfFile, pageRange: page.pageRange });
+        for (const sim of page.sims) {
+            const wrap = document.createElement("div");
+            wrap.className = "page-sim";
+            this.contentEl.appendChild(wrap);
+            sim.mount(wrap);
+        }
         renderAllMath(this.contentEl);
         try {
             location.hash = id;
@@ -49,8 +58,8 @@ export class Nav {
     }
     showFromHashOrFirst() {
         const hash = location.hash.replace("#", "");
-        const target = this.entries.find((e) => e.id === hash);
-        this.show(target ? target.id : this.entries[0].id);
+        const target = this.pages.find((p) => p.id === hash);
+        this.show(target ? target.id : this.pages[0].id);
     }
 }
 //# sourceMappingURL=nav.js.map

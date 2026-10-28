@@ -1,5 +1,5 @@
 /**
- * S02 連立一次方程式・掃き出し法のステッパー（事前学習2、第7回 p.55）
+ * S02 連立一次方程式・掃き出し法のステッパー（第7回 p.55）
  *
  * 要確認: 指示書は「基本変形の種類をユーザーが選んで手動で適用する」モードも
  * 示唆しているが、時間の都合でここでは「次へ/前へ/自動再生」で自動実行される
@@ -22,9 +22,9 @@ const DEFAULT_A = [
 const DEFAULT_B = [-3, 1, -2];
 export function mountS02(container) {
     const refs = createSimLayout(container, {
-        title: "S02 連立一次方程式・掃き出し法のステッパー",
-        page: "p.55（事前学習2 p.11）",
-        lecture: "第7回 / 事前学習2",
+        title: "連立一次方程式・掃き出し法のステッパー",
+        page: "p.55",
+        lecture: "第7回",
         purpose: "拡大係数行列を基本変形で階段行列に変え、解を求める過程をステップごとに見る。",
     });
     let m = 3;
@@ -38,7 +38,7 @@ export function mountS02(container) {
     </div>
     <div id="s02-grid"></div>
     <div class="field-row">
-      <button type="button" id="s02-default">事前学習2の例を入れる</button>
+      <button type="button" id="s02-default">既定の例を入れる</button>
       <button type="button" id="s02-run">計算する</button>
     </div>
     <div id="s02-stepper"></div>

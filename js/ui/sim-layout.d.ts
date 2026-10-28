@@ -19,6 +19,13 @@ export interface SimLayoutRefs {
     quiz: HTMLElement;
     glossary: HTMLElement;
 }
+export interface PageHeaderSpec {
+    title: string;
+    pdfFile: string;
+    pageRange: string;
+}
+/** 画面（講義回）の冒頭に置く見出し。対応する講義資料のファイル名とノートのページ番号を示す。 */
+export declare function createPageHeader(container: HTMLElement, spec: PageHeaderSpec): void;
 export declare function createSimLayout(container: HTMLElement, spec: SimLayoutSpec): SimLayoutRefs;
 export declare function renderGlossary(container: HTMLElement, terms: Array<{
     term: string;

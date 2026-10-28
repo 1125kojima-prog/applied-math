@@ -21,6 +21,14 @@ export interface VectorCanvasOptions {
     onDrag?: (id: string, pos: Point2) => void;
     snapGrid?: number;
 }
+/**
+ * canvas のCSS表示サイズ（論理ピクセル）に devicePixelRatio を掛けた解像度で
+ * バッファを確保し、描画コンテキストをその分だけ拡大しておくことで、
+ * 線や文字を実ピクセルでくっきり表示する。表示サイズが変わるたびに自動で追従する。
+ * （devicePixelRatio 自体の変化＝表示サイズは変わらないブラウザズームやモニター間
+ * 移動には追従しない。対応するにはより重い監視が必要なためここでは対象外とした。）
+ */
+export declare function observeCanvasResize(canvas: HTMLCanvasElement, onResize: (cssWidth: number, cssHeight: number) => void): ResizeObserver;
 /** 色覚多様性に配慮した Okabe-Ito パレット（指示書 §4.2）。 */
 export declare const PALETTE: {
     blue: string;
@@ -41,6 +49,11 @@ export declare class VectorCanvas {
     private vectors;
     private extraLabels;
     private extraLines;
+    /** CSS上の表示サイズ（論理ピクセル）。座標計算はすべてこの値を基準にし、
+     *  実際のバッファ解像度（canvas.width/height）は devicePixelRatio 倍にして
+     *  線や文字をくっきり描く（視認性要件）。 */
+    private cssW;
+    private cssH;
     constructor(canvas: HTMLCanvasElement, opts: VectorCanvasOptions);
     setDraggables(points: DraggablePoint[]): void;
     setVectors(vectors: DrawVector[]): void;

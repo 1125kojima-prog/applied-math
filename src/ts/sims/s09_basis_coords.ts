@@ -11,7 +11,7 @@ import { VectorCanvas, PALETTE, DraggablePoint, DrawVector } from "../ui/vector-
 
 export function mountS09(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S09 基底と座標",
+    title: "基底と座標",
     page: "p.51-56",
     lecture: "第6回",
     purpose: "基底（1次独立かつ生成する）を理解し、ベクトルxの座標(c1,c2)を求める。",

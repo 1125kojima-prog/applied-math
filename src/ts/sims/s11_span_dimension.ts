@@ -20,7 +20,7 @@ const DEFAULT_F = [
 
 export function mountS11(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S11 生成される部分空間の次元",
+    title: "生成される部分空間の次元",
     page: "p.59-60",
     lecture: "第7回",
     purpose: "ベクトルの組が張る部分空間の次元 = 極大1次独立組の要素数（定理4.4.4）を確認する。",

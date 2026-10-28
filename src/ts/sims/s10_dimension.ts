@@ -61,7 +61,7 @@ const SPACES: SpaceDef[] = [
 
 export function mountS10(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S10 次元の定義と基底の要素数",
+    title: "次元の定義と基底の要素数",
     page: "p.54, p.59-60",
     lecture: "第7回",
     purpose: "次元 dim(V) = 基底の要素数は、基底の取り方によらず一定であることを確認する。",

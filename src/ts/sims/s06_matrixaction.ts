@@ -11,7 +11,7 @@ const COLORS = [PALETTE.blue, PALETTE.orange, PALETTE.green];
 
 export function mountS06(container: HTMLElement): void {
   const refs = createSimLayout(container, {
-    title: "S06 行列とベクトルの組の対応",
+    title: "行列とベクトルの組の対応",
     page: "p.33",
     lecture: "第4回",
     purpose: "ベクトルの組 (u1,…,um) と行列の積 (u1,…,um)A の関係を、色分けした式で理解する。",

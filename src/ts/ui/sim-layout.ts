@@ -17,6 +17,23 @@ export interface SimLayoutRefs {
   glossary: HTMLElement;
 }
 
+export interface PageHeaderSpec {
+  title: string; // 例: "第3回"
+  pdfFile: string; // 例: "03.pdf"
+  pageRange: string; // 例: "p.31-33"
+}
+
+/** 画面（講義回）の冒頭に置く見出し。対応する講義資料のファイル名とノートのページ番号を示す。 */
+export function createPageHeader(container: HTMLElement, spec: PageHeaderSpec): void {
+  const header = document.createElement("header");
+  header.className = "page-header";
+  header.innerHTML = `
+    <h2 class="page-title">${spec.title}</h2>
+    <p class="page-source">講義資料: ${spec.pdfFile}　（ノート ${spec.pageRange}）</p>
+  `;
+  container.appendChild(header);
+}
+
 export function createSimLayout(container: HTMLElement, spec: SimLayoutSpec): SimLayoutRefs {
   container.innerHTML = "";
   const article = document.createElement("article");

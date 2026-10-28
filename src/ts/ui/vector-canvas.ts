@@ -33,6 +33,38 @@ export interface VectorCanvasOptions {
   snapGrid?: number; // ドラッグ位置をこの間隔にスナップする（0なら無効）
 }
 
+/**
+ * canvas のCSS表示サイズ（論理ピクセル）に devicePixelRatio を掛けた解像度で
+ * バッファを確保し、描画コンテキストをその分だけ拡大しておくことで、
+ * 線や文字を実ピクセルでくっきり表示する。表示サイズが変わるたびに自動で追従する。
+ * （devicePixelRatio 自体の変化＝表示サイズは変わらないブラウザズームやモニター間
+ * 移動には追従しない。対応するにはより重い監視が必要なためここでは対象外とした。）
+ */
+export function observeCanvasResize(
+  canvas: HTMLCanvasElement,
+  onResize: (cssWidth: number, cssHeight: number) => void
+): ResizeObserver {
+  const resize = (): void => {
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(1, Math.round(rect.width));
+    const cssHeight = Math.max(1, Math.round(rect.height));
+    const dpr = window.devicePixelRatio || 1;
+    const pxWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const pxHeight = Math.max(1, Math.round(cssHeight * dpr));
+    if (canvas.width !== pxWidth || canvas.height !== pxHeight) {
+      canvas.width = pxWidth;
+      canvas.height = pxHeight;
+    }
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    onResize(cssWidth, cssHeight);
+  };
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+  resize(); // ResizeObserverの初回通知は非同期なので、即座に一度実行して初期描画の乱れを防ぐ
+  return ro;
+}
+
 /** 色覚多様性に配慮した Okabe-Ito パレット（指示書 §4.2）。 */
 export const PALETTE = {
   blue: "#0072B2",
@@ -54,6 +86,11 @@ export class VectorCanvas {
   private vectors: DrawVector[] = [];
   private extraLabels: Array<{ pos: Point2; text: string; color: string }> = [];
   private extraLines: Array<{ from: Point2; to: Point2; color: string; width?: number }> = [];
+  /** CSS上の表示サイズ（論理ピクセル）。座標計算はすべてこの値を基準にし、
+   *  実際のバッファ解像度（canvas.width/height）は devicePixelRatio 倍にして
+   *  線や文字をくっきり描く（視認性要件）。 */
+  private cssW = 0;
+  private cssH = 0;
 
   constructor(canvas: HTMLCanvasElement, opts: VectorCanvasOptions) {
     this.canvas = canvas;
@@ -65,6 +102,11 @@ export class VectorCanvas {
     this.snapGrid = opts.snapGrid ?? 0;
     this.canvas.style.touchAction = "none";
     this.bindPointerEvents();
+    observeCanvasResize(this.canvas, (w, h) => {
+      this.cssW = w;
+      this.cssH = h;
+      this.render();
+    });
   }
 
   setDraggables(points: DraggablePoint[]): void {
@@ -85,24 +127,22 @@ export class VectorCanvas {
   }
 
   private worldToScreen(p: Point2): Point2 {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.cssW;
+    const h = this.cssH;
     const scale = Math.min(w, h) / (2 * this.range);
     return { x: w / 2 + p.x * scale, y: h / 2 - p.y * scale };
   }
 
   private screenToWorld(p: Point2): Point2 {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.cssW;
+    const h = this.cssH;
     const scale = Math.min(w, h) / (2 * this.range);
     return { x: (p.x - w / 2) / scale, y: -(p.y - h / 2) / scale };
   }
 
   private getCanvasPos(ev: PointerEvent): Point2 {
     const rect = this.canvas.getBoundingClientRect();
-    const sx = this.canvas.width / rect.width;
-    const sy = this.canvas.height / rect.height;
-    return { x: (ev.clientX - rect.left) * sx, y: (ev.clientY - rect.top) * sy };
+    return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
   }
 
   private bindPointerEvents(): void {
@@ -169,8 +209,8 @@ export class VectorCanvas {
   /** 格子・軸・目盛りを描く。 */
   private drawGrid(): void {
     const ctx = this.ctx;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.cssW;
+    const h = this.cssH;
     const style = getComputedStyle(this.canvas);
     const gridColor = style.getPropertyValue("--canvas-grid").trim() || "#ddd";
     const axisColor = style.getPropertyValue("--canvas-axis").trim() || "#333";
@@ -208,7 +248,7 @@ export class VectorCanvas {
 
     // 目盛りの数字
     ctx.fillStyle = textColor;
-    ctx.font = "13px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     for (let i = -Math.ceil(this.range) + 1; i < Math.ceil(this.range); i++) {

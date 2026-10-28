@@ -1,3 +1,13 @@
+/** 画面（講義回）の冒頭に置く見出し。対応する講義資料のファイル名とノートのページ番号を示す。 */
+export function createPageHeader(container, spec) {
+    const header = document.createElement("header");
+    header.className = "page-header";
+    header.innerHTML = `
+    <h2 class="page-title">${spec.title}</h2>
+    <p class="page-source">講義資料: ${spec.pdfFile}　（ノート ${spec.pageRange}）</p>
+  `;
+    container.appendChild(header);
+}
 export function createSimLayout(container, spec) {
     container.innerHTML = "";
     const article = document.createElement("article");

@@ -20,7 +20,7 @@ const DEFAULT_VECTORS = [
 ];
 export function mountS07(container) {
     const refs = createSimLayout(container, {
-        title: "S07 ランク・極大1次独立部分組",
+        title: "ランク・極大1次独立部分組",
         page: "p.43-44",
         lecture: "第5回",
         purpose: "例題4.3.1のアルゴリズム（簡約化→極大独立組の特定→残りの1次結合表現）をステップで追う。",
